@@ -29,14 +29,14 @@ export class AdulthoodProof extends Struct({
 
 const { OffchainState } = Experimental;
 
-const offchainState = OffchainState(
+export const offchainState = OffchainState(
   {
     accounts: OffchainState.Map(PublicKey, UInt64),
   },
   { logTotalCapacity: 10, maxActionsPerProof: 5 }
 );
 
-class StateProof extends offchainState.Proof {}
+export class StateProof extends offchainState.Proof {}
 
 
 export class ProofOfAge extends SmartContract {
@@ -48,7 +48,7 @@ export class ProofOfAge extends SmartContract {
 
   init() {
     super.init();
-    this.circulating.set(UInt64.from(0));
+    this.circulating.set(UInt64.zero);
   }
  
   @method.returns(UInt64)
@@ -95,10 +95,10 @@ export class ProofOfAge extends SmartContract {
     senderOption.isSome.assertFalse();
     offchainState.fields.accounts.update(sender, {
       from: undefined,
-      to: UInt64.from(1),
+      to: UInt64.one,
     });
     
-    this.reducer.dispatch(Int64.from(1))
+    this.reducer.dispatch(Int64.one)
 
   }
 

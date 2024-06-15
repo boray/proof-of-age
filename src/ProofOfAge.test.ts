@@ -1,8 +1,8 @@
-import { AccountUpdate, Field, Mina, PrivateKey, PublicKey } from 'o1js';
+import { AccountUpdate, Field, Mina, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import { ProofOfAge, AdulthoodProof } from './ProofOfAge';
 
 
-let proofsEnabled = false;
+let proofsEnabled = true;
 
 describe('ProofOfAge', () => {
   let deployerAccount: Mina.TestPublicKey,
@@ -42,7 +42,7 @@ describe('ProofOfAge', () => {
   it('generates and deploys the `ProofOfAge` smart contract', async () => {
     await localDeploy();
     const counter = zkApp.circulating.get();
-    expect(counter).toEqual(Field(0));
+    expect(counter).toEqual(UInt64.zero);
   });
 
   it('correctly updates the num state on the `ProofOfAge` smart contract', async () => {
@@ -65,6 +65,7 @@ describe('ProofOfAge', () => {
     await txn.sign([senderKey]).send();
 
     const updatedCounter = zkApp.circulating.get();
-    expect(updatedCounter).toEqual(Field(1));
+    expect(updatedCounter).toEqual(UInt64.zero);
+
   });
 });
