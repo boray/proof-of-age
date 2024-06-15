@@ -1,4 +1,4 @@
-import { AccountUpdate, Field, Mina, PrivateKey, PublicKey } from 'o1js';
+import { AccountUpdate, Bool, Field, Mina, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import { ProofOfAge, AdulthoodProof } from './ProofOfAge';
 
 
@@ -41,11 +41,11 @@ describe('ProofOfAge', () => {
 
   it('generates and deploys the `ProofOfAge` smart contract', async () => {
     await localDeploy();
-    const counter = zkApp.counter.get();
-    expect(counter).toEqual(Field(0));
+    const counter = zkApp.circulating.get();
+    expect(counter).toEqual(UInt64.from(0));
   });
 
-  it('correctly updates the num state on the `ProofOfAge` smart contract', async () => {
+  it('mints a new soulbound proof-of-age token, updates circulating and check adulthood', async () => {
     await localDeploy();
 
     const adulthood_proof = new AdulthoodProof({
@@ -57,14 +57,31 @@ describe('ProofOfAge', () => {
       passport_expiration_date: Field(1),
       passport_number: Field(1)
     });
-    // update transaction
+
     const txn = await Mina.transaction(senderAccount, async () => {
+      AccountUpdate.fundNewAccount(senderAccount);
       await zkApp.prove_adulthood(adulthood_proof);
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
 
-    const updatedCounter = zkApp.counter.get();
-    expect(updatedCounter).toEqual(Field(1));
+    const txnx = await Mina.transaction(senderAccount, async () => {
+      await zkApp.updateCirculating();
+    });
+    await txnx.prove();
+    await txnx.sign([senderKey]).send();
+
+    const updatedCounter = zkApp.circulating.get();
+    expect(updatedCounter).toEqual(UInt64.from(1));
+    
+    let res;
+    const txny = await Mina.transaction(senderAccount, async () => {
+      res = await zkApp.is_adult(senderAccount);
+    });
+    await txny.prove();
+    await txny.sign([senderKey]).send();
+    expect(res).toEqual(Bool(true));
+
   });
+
 });
