@@ -41,7 +41,7 @@ describe('ProofOfAge', () => {
 
   it('generates and deploys the `ProofOfAge` smart contract', async () => {
     await localDeploy();
-    const counter = zkApp.counter.get();
+    const counter = zkApp.circulating.get();
     expect(counter).toEqual(Field(0));
   });
 
@@ -64,7 +64,7 @@ describe('ProofOfAge', () => {
     await txn.prove();
     await txn.sign([senderKey]).send();
 
-    const updatedCounter = zkApp.counter.get();
+    const updatedCounter = zkApp.circulating.get();
     expect(updatedCounter).toEqual(Field(1));
   });
 });

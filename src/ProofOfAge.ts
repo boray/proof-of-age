@@ -1,4 +1,4 @@
-import { Field, SmartContract, state, State, method, Struct, Bool, Poseidon, Permissions, PublicKey } from 'o1js';
+import { Field, SmartContract, state, State, method, Struct, Bool, Poseidon, Experimental, PublicKey, UInt64, Int64, Reducer } from 'o1js';
 
 /**
  * PROOF-OF-AGE
@@ -26,23 +26,85 @@ export class AdulthoodProof extends Struct({
   }
 
 }
+
+const { OffchainState } = Experimental;
+
+const offchainState = OffchainState(
+  {
+    accounts: OffchainState.Map(PublicKey, UInt64),
+  },
+  { logTotalCapacity: 10, maxActionsPerProof: 5 }
+);
+
+class StateProof extends offchainState.Proof {}
+
+
 export class ProofOfAge extends SmartContract {
-  @state(Field) counter = State<Field>();
+  @state(Field) circulating = State<UInt64>();
+  @state(Field) actionState = State<Field>()
+  @state(OffchainState.Commitments) offchainState = offchainState.commitments();
+
+  reducer = Reducer({ actionType: Int64 })
 
   init() {
     super.init();
-    this.counter.set(Field(0));
+    this.circulating.set(UInt64.from(0));
   }
  
+  @method.returns(UInt64)
+  async getSupply() {
+    const circulating = this.circulating.getAndRequireEquals();
+    return circulating;
+  }
+
+  @method.returns(UInt64)
+  async getBalance(address: PublicKey) {
+    return (await offchainState.fields.accounts.get(address)).orElse(0n);
+  }
+
+  @method
+  async settle(proof: StateProof) {
+    await offchainState.settle(proof);
+  }
+
+  @method
+  async updateCirculating() {
+    let oldCirculating = this.circulating.getAndRequireEquals()
+    let actionState = this.actionState.getAndRequireEquals()
+    let pendingActions = this.reducer.getActions({ fromActionState: actionState })
+
+    let newCirculating = this.reducer.reduce(
+     pendingActions,
+     Int64,
+     (circulating: Int64, action: Int64) => {
+       return circulating.add(action)
+     },
+     Int64.from(oldCirculating),
+     { maxUpdatesWithActions: 500 },
+   )
+     newCirculating.isPositive().assertTrue()
+     
+    this.circulating.set(newCirculating.magnitude)
+    this.actionState.set(pendingActions.hash)
+  }
+   
   @method async prove_adulthood(adulthood_proof: AdulthoodProof) {
     adulthood_proof.verify().assertTrue();
-    // assert token balance is zero
-    // mint token
-    const currentCount = this.counter.getAndRequireEquals();
-    this.counter.set(currentCount.add(1));
+    const sender = this.sender.getAndRequireSignature();
+    let senderOption = await offchainState.fields.accounts.get(sender);
+    senderOption.isSome.assertFalse();
+    offchainState.fields.accounts.update(sender, {
+      from: undefined,
+      to: UInt64.from(1),
+    });
+    
+    this.reducer.dispatch(Int64.from(1))
+
   }
-  async is_adult(user: PublicKey){
-    // assert balance equals to one
+
+  async is_adult(address: PublicKey){
+    const balance = (await offchainState.fields.accounts.get(address)).orElse(0n);
+    balance.assertEquals(UInt64.from(1));
     return Bool(true);
   }
 }
