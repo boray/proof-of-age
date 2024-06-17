@@ -8,9 +8,7 @@ import {
   PublicKey,
   UInt64,
   AccountUpdate,
-  AccountUpdateForest,
-  Int64,
-  Provable,
+  AccountUpdateForest
 } from 'o1js';
 
 export { ProofOfAge, AdulthoodProof};
@@ -41,19 +39,22 @@ class AdulthoodProof extends Struct({
     ]);
   }
   prove_adult(): Bool {
-    // verification logic (zkPassport - add link here)
+    // the logic of proving adulthood is not impelemented here. For discussions, please refer to https://github.com/MinaFoundation/Core-Grants/pull/11
     return Bool(true);
   }
 }
+
+
+/**
+ * non-transferrability
+ * permissions
+ * this.deriveTokenId()
+ */
 
 class ProofOfAge extends TokenContract {
   async deploy() {
     await super.deploy();
     this.account.tokenSymbol.set('ADULT');
-  }
-
-  init() {
-    super.init();
   }
 
   @method async proveAdulthood(
@@ -86,14 +87,6 @@ class ProofOfAge extends TokenContract {
 
   @method
   async approveBase(updates: AccountUpdateForest): Promise<void> {
-    let totalBalance = Int64.from(0);
-    this.forEachUpdate(updates, (update, usesToken) => {
-      totalBalance = Provable.if(
-        usesToken,
-        totalBalance.add(update.balanceChange),
-        totalBalance
-      );
-    });
-    totalBalance.assertEquals(Int64.zero);
+    this.checkZeroBalanceChange(updates);
   }
 }
