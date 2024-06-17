@@ -60,7 +60,7 @@ describe('ProofOfAge', () => {
 
     const txn = await Mina.transaction(senderAccount, async () => {
       AccountUpdate.fundNewAccount(senderAccount);
-      await zkApp.prove_adulthood(adulthood_proof);
+      await zkApp.prove_adulthood(senderAccount,adulthood_proof);
     });
     await txn.prove();
     await txn.sign([senderKey]).send();

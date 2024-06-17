@@ -1,4 +1,4 @@
-import { Field, SmartContract, state, State, method, Struct, Bool, Poseidon, TokenContract, PublicKey, Reducer, UInt64, DeployArgs, UInt8, AccountUpdate, AccountUpdateForest, Int64, Provable, MerkleList} from 'o1js';
+import { Field, state, State, method, Struct, Bool, Poseidon, TokenContract, PublicKey, Reducer, UInt64, AccountUpdate, AccountUpdateForest, Int64, Provable } from 'o1js';
 
 /**
  * PROOF-OF-AGE
@@ -52,11 +52,11 @@ export class ProofOfAge extends TokenContract {
   init() {
     super.init();
   }
- 
-  @method async prove_adulthood(adulthood_proof: AdulthoodProof) {
+  
+  @method async prove_adulthood(sender: PublicKey, adulthood_proof: AdulthoodProof) {
     adulthood_proof.verify().assertTrue();
     // assert token balance is zero
-    const sender = this.sender.getAndRequireSignature();
+    // const sender = this.sender.getAndRequireSignature();
     const account = AccountUpdate.create(sender, this.deriveTokenId()).account
     const balance = account.balance.get()
     account.balance.requireEquals(balance)
@@ -69,12 +69,12 @@ export class ProofOfAge extends TokenContract {
 
   @method.returns(Bool)
   async is_adult(address: PublicKey): Promise<Bool> {
-    this.verify_adulthood(address)
+    ProofOfAge.verify_adulthood(address,this.deriveTokenId())
     return Bool(true);
   }
 
-  async verify_adulthood(address: PublicKey){
-    const account = AccountUpdate.create(address, this.deriveTokenId()).account
+  static async verify_adulthood(address: PublicKey, token_id: Field){
+    const account = AccountUpdate.create(address, token_id).account
     const balance = account.balance.get()
     account.balance.requireEquals(balance)
     balance.assertEquals(UInt64.from(1))
