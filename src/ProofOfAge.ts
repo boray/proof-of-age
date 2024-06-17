@@ -8,15 +8,14 @@ import {
   PublicKey,
   UInt64,
   AccountUpdate,
-  AccountUpdateForest
+  AccountUpdateForest,
 } from 'o1js';
 
-export { ProofOfAge, AdulthoodProof};
+export { ProofOfAge, AdulthoodProof };
 /**
  * PROOF-OF-AGE
  * COMPOSABLE PROOFS
  */
-
 
 class AdulthoodProof extends Struct({
   first_name: Field,
@@ -44,9 +43,7 @@ class AdulthoodProof extends Struct({
   }
 }
 
-
 /**
- * non-transferrability
  * permissions
  * this.deriveTokenId()
  */
@@ -57,13 +54,10 @@ class ProofOfAge extends TokenContract {
     this.account.tokenSymbol.set('ADULT');
   }
 
-  @method async proveAdulthood(
-    sender: PublicKey,
-    adulthood_proof: AdulthoodProof
-  ) {
+  @method async proveAdulthood(adulthood_proof: AdulthoodProof) {
     adulthood_proof.prove_adult().assertTrue();
     // assert token balance is zero
-    // const sender = this.sender.getAndRequireSignature();
+    const sender = this.sender.getAndRequireSignature();
     const account = AccountUpdate.create(sender, this.deriveTokenId()).account;
     const balance = account.balance.get();
     account.balance.requireEquals(balance);
@@ -85,7 +79,7 @@ class ProofOfAge extends TokenContract {
     balance.assertEquals(UInt64.from(1));
   }
 
-  @method
+  // approveBase is not a method thus not provable. This means wrappers around approveBase (e.g. transfer) are not provable as well.
   async approveBase(updates: AccountUpdateForest): Promise<void> {
     this.checkZeroBalanceChange(updates);
   }

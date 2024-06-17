@@ -49,7 +49,7 @@ console.time('register proof-of-age');
 try {
   const register_tx = await Mina.transaction(account_one, async () => {
     AccountUpdate.fundNewAccount(account_one);
-    await contract.proveAdulthood(account_one, generic_proof);
+    await contract.proveAdulthood(generic_proof);
   });
   await register_tx.prove();
   await register_tx.sign([account_one.key]).send();
@@ -65,7 +65,7 @@ console.time('register proof-of-age');
 try {
   const another_register_tx = await Mina.transaction(account_two, async () => {
     AccountUpdate.fundNewAccount(account_two);
-    await contract.proveAdulthood(account_two, generic_proof);
+    await contract.proveAdulthood(generic_proof);
   });
   await another_register_tx.prove();
   await another_register_tx.sign([account_two.key]).send();
