@@ -2,8 +2,6 @@ import { Mina, PrivateKey, Field, AccountUpdate } from 'o1js';
 import { AdulthoodProof, ProofOfAge } from './ProofOfAge.js';
 // import { showTxn, saveTxn, printTxn } from 'mina-transaction-visualizer';
 
-
-
 const Local = await Mina.LocalBlockchain({ proofsEnabled: false });
 Mina.setActiveInstance(Local);
 
@@ -34,62 +32,55 @@ const generic_proof = new AdulthoodProof({
   date_of_birth: Field(1),
   gender: Field(1),
   passport_expiration_date: Field(1),
-  passport_number: Field(1)
+  passport_number: Field(1),
 });
 
 console.time('deploy');
 const deploy_tx = await Mina.transaction(account_one, async () => {
   AccountUpdate.fundNewAccount(account_one);
   await contract.deploy();
-})
-  await deploy_tx.prove()
-  await deploy_tx.sign([zkAppPrivateKey, account_one.key]).send();
-  //printTxn(deploy_tx, 'deploy_txn', legend);
+});
+await deploy_tx.prove();
+await deploy_tx.sign([zkAppPrivateKey, account_one.key]).send();
+//printTxn(deploy_tx, 'deploy_txn', legend);
 console.timeEnd('deploy');
 
-
 console.time('register proof-of-age');
 try {
-const register_tx = await Mina.transaction(account_one, async () => {
-  AccountUpdate.fundNewAccount(account_one);
-  await contract.prove_adulthood(account_one,generic_proof);
-})
-  await register_tx.prove()
+  const register_tx = await Mina.transaction(account_one, async () => {
+    AccountUpdate.fundNewAccount(account_one);
+    await contract.proveAdulthood(account_one, generic_proof);
+  });
+  await register_tx.prove();
   await register_tx.sign([account_one.key]).send();
   //printTxn(register_tx, 'register_txn', legend);
-}
-catch(err){
+} catch (err) {
   console.log(err);
 }
 console.timeEnd('register proof-of-age');
 
-console.log("account 1:",Mina.getBalance(account_one, tokenId).toString());
-
+console.log('account 1:', Mina.getBalance(account_one, tokenId).toString());
 
 console.time('register proof-of-age');
 try {
-const another_register_tx = await Mina.transaction(account_two, async () => {
-  AccountUpdate.fundNewAccount(account_two);
-  await contract.prove_adulthood(account_two,generic_proof);
-})
-  await another_register_tx.prove()
+  const another_register_tx = await Mina.transaction(account_two, async () => {
+    AccountUpdate.fundNewAccount(account_two);
+    await contract.proveAdulthood(account_two, generic_proof);
+  });
+  await another_register_tx.prove();
   await another_register_tx.sign([account_two.key]).send();
-}
-catch(err){
+} catch (err) {
   console.log(err);
 }
 console.timeEnd('register proof-of-age');
 
-console.log("account 1:",Mina.getBalance(account_one, tokenId).toString());
-console.log("account 2:",Mina.getBalance(account_two, tokenId).toString());
-
-
+console.log('account 1:', Mina.getBalance(account_one, tokenId).toString());
+console.log('account 2:', Mina.getBalance(account_two, tokenId).toString());
 
 console.time('check proof-of-age');
 const check_tx = await Mina.transaction(account_one, async () => {
-  await contract.is_adult(account_one);
-})
-  await check_tx.prove()
-  await check_tx.sign([account_one.key]).send();
+  await contract.isAdult(account_one);
+});
+await check_tx.prove();
+await check_tx.sign([account_one.key]).send();
 console.timeEnd('check proof-of-age');
-
