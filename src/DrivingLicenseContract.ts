@@ -1,11 +1,28 @@
-import { Field, PublicKey, SmartContract, method } from 'o1js';
+import { AccountUpdate, Bool, Permissions, Field, PublicKey, SmartContract, UInt64, method, Provable } from 'o1js';
 import { ProofOfAge } from './ProofOfAge.js';
 
 export { DrivingLicenseContract };
 
 class DrivingLicenseContract extends SmartContract {
-  @method async apply_for_driving_license(address: PublicKey, token_id: Field) {
-    ProofOfAge.verifyAdulthood(address, token_id);
-    // submit application
+
+    async deploy() {
+        await super.deploy();
+        this.account.permissions.set({
+          ...Permissions.default(),
+          access: Permissions.proofOrSignature(),
+        });
+      }
+
+  @method async apply_for_driving_license(address: PublicKey, adulthood_contract: PublicKey, token_id: Field) {
+    const proof_of_age = new ProofOfAge(adulthood_contract);
+    await proof_of_age.isAdult(address,token_id);
+    //-------
+    //const accountUpdate = AccountUpdate.create(address,token_id);
+    //const balance = accountUpdate.account.balance.getAndRequireEquals();
+    //balance.assertEquals(UInt64.from(1));
+    //-------
+    //ProofOfAge.verifyAdulthood(address,token_id);
   }
 }
+
+

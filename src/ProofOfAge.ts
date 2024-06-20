@@ -9,6 +9,11 @@ import {
   UInt64,
   AccountUpdate,
   AccountUpdateForest,
+  State,
+  Permissions,
+  state,
+  TokenId,
+  Provable
 } from 'o1js';
 
 export { ProofOfAge, AdulthoodProof };
@@ -46,12 +51,20 @@ class AdulthoodProof extends Struct({
 /**
  * permissions
  * this.deriveTokenId()
+ * README
  */
-
+// https://discord.com/channels/484437221055922177/1222981963283955802
 class ProofOfAge extends TokenContract {
+  
   async deploy() {
     await super.deploy();
     this.account.tokenSymbol.set('ADULT');
+    this.account.permissions.set({
+      ...Permissions.default(),
+      access: Permissions.proofOrSignature(),
+      
+    });
+
   }
 
   @method async proveAdulthood(adulthood_proof: AdulthoodProof) {
@@ -66,20 +79,26 @@ class ProofOfAge extends TokenContract {
     this.internal.mint({ address: sender, amount: 1 });
   }
 
-  @method.returns(Bool)
-  async isAdult(address: PublicKey): Promise<Bool> {
-    ProofOfAge.verifyAdulthood(address, this.deriveTokenId());
-    return Bool(true);
-  }
-
-  static async verifyAdulthood(address: PublicKey, token_id: Field) {
-    const account = AccountUpdate.create(address, token_id).account;
-    const balance = account.balance.get();
-    account.balance.requireEquals(balance);
+  @method
+  async isAdult(address: PublicKey, token_id: Field) {
+    const accountUpdate = AccountUpdate.create(address, token_id);
+    //await this.approveAccountUpdate(accountUpdate);
+    const balance = accountUpdate.account.balance.get();
+    accountUpdate.account.balance.requireEquals(balance);
+    Provable.log(balance);
+    Provable.log(token_id);
     balance.assertEquals(UInt64.from(1));
   }
 
-  // approveBase is not a method thus not provable. This means wrappers around approveBase (e.g. transfer) are not provable as well.
+  static async verifyAdulthood(address: PublicKey, token_id: Field) {
+    const update = AccountUpdate.create(address, token_id);
+    update.body.mayUseToken = AccountUpdate.MayUseToken.InheritFromParent;
+    const balance = update.account.balance.get();
+    update.account.balance.requireEquals(balance);
+    balance.assertEquals(UInt64.from(1));
+  }
+
+  @method // approveBase is not a method thus not provable. This means wrappers around approveBase (e.g. transfer) are not provable as well.
   async approveBase(updates: AccountUpdateForest): Promise<void> {
     this.checkZeroBalanceChange(updates);
   }
