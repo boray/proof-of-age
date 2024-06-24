@@ -14,8 +14,7 @@ class DrivingLicenseContract extends SmartContract {
       }
 
   @method async apply_for_driving_license(address: PublicKey, adulthood_contract: PublicKey, token_id: Field) {
-    const proof_of_age = new ProofOfAge(adulthood_contract);
-    await proof_of_age.isAdult(address,token_id);
+    ProofOfAge.verifyAdulthood(address,token_id);
   }
 }
 
