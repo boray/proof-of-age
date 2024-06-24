@@ -1,4 +1,4 @@
-import { Mina, PrivateKey, Field, AccountUpdate, TokenId } from 'o1js';
+import { Mina, PrivateKey, Field, AccountUpdate, TokenId, UInt64, VerificationKey } from 'o1js';
 import { AdulthoodProof, ProofOfAge } from './ProofOfAge.js';
 import { DrivingLicenseContract } from './DrivingLicenseContract.js';
 // import { showTxn, saveTxn, printTxn } from 'mina-transaction-visualizer';
@@ -24,13 +24,14 @@ const legend = {
   [account_one.toBase58()]: 'deployer',
 };
 */
-
 if (Local.proofsEnabled) {
   console.time('compile contract');
   await ProofOfAge.compile();
   await DrivingLicenseContract.compile();
   console.timeEnd('compile contract');
 }
+
+
 
 const generic_proof = new AdulthoodProof({
   first_name: Field.random(),
@@ -52,6 +53,7 @@ const deploy_tx = await Mina.transaction(account_one, async () => {
 await deploy_tx.prove();
 await deploy_tx.sign([zkAppPrivateKey, account_one.key]).send();
 //printTxn(deploy_tx, 'deploy_txn', legend);
+console.log(deploy_tx.toPretty());
 console.timeEnd('deploy');
 
 console.time('deploy licence contract');
@@ -62,6 +64,8 @@ const deploy_license_tx = await Mina.transaction(account_one, async () => {
 });
 await deploy_license_tx.prove();
 await deploy_license_tx.sign([licenseZkAppPrivateKey, account_one.key]).send();
+console.log(deploy_license_tx.toPretty());
+
 //printTxn(deploy_tx, 'deploy_txn', legend);
 console.timeEnd('deploy licence contract');
 
@@ -73,6 +77,8 @@ try {
   });
   await register_tx.prove();
   await register_tx.sign([account_one.key]).send();
+  console.log(register_tx.toPretty());
+
   //printTxn(register_tx, 'register_txn', legend);
 } catch (err) {
   console.log(err);
@@ -89,6 +95,8 @@ try {
   });
   await another_register_tx.prove();
   await another_register_tx.sign([account_two.key]).send();
+  console.log(another_register_tx.toPretty());
+
 } catch (err) {
   console.log(err);
 }
@@ -104,13 +112,16 @@ const check_tx = await Mina.transaction(account_one, async () => {
 });
 await check_tx.prove();
 await check_tx.sign([account_one.key]).send();
+console.log(check_tx.toPretty());
 console.timeEnd('check proof-of-age');
 
 
 console.time('apply for license');
 const license_tx = await Mina.transaction(account_one, async () => {
   await licenceContract.apply_for_driving_license(account_one, licenseZkApp, tokenId);
+  
 });
 await license_tx.prove();
 await license_tx.sign([account_one.key]).send();
 console.timeEnd('apply for license');
+

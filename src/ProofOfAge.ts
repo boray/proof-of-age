@@ -81,21 +81,18 @@ class ProofOfAge extends TokenContract {
 
   @method
   async isAdult(address: PublicKey, token_id: Field) {
-    const accountUpdate = AccountUpdate.create(address, token_id);
-    //await this.approveAccountUpdate(accountUpdate);
-    const balance = accountUpdate.account.balance.get();
-    accountUpdate.account.balance.requireEquals(balance);
-    Provable.log(balance);
-    Provable.log(token_id);
-    balance.assertEquals(UInt64.from(1));
+    AccountUpdate.create(address, token_id)
+      .account.balance.getAndRequireEquals()
+      .assertEquals(UInt64.from(1));
+  
   }
 
   static async verifyAdulthood(address: PublicKey, token_id: Field) {
     const update = AccountUpdate.create(address, token_id);
-    update.body.mayUseToken = AccountUpdate.MayUseToken.InheritFromParent;
     const balance = update.account.balance.get();
     update.account.balance.requireEquals(balance);
     balance.assertEquals(UInt64.from(1));
+    return update
   }
 
   @method // approveBase is not a method thus not provable. This means wrappers around approveBase (e.g. transfer) are not provable as well.
