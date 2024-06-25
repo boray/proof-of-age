@@ -40,8 +40,5 @@
   },
   "engines": {
     "node": ">=18.14.0"
-  },
-  "dependencies": {
-    "mina-transaction-visualizer": "^0.1.0"
   }
 }
