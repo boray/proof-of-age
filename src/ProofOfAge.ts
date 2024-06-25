@@ -4,16 +4,13 @@ import {
   Struct,
   Bool,
   Poseidon,
-  TokenContract,
   PublicKey,
-  UInt64,
   AccountUpdate,
-  AccountUpdateForest,
   State,
   Permissions,
   state,
-  TokenId,
-  Provable
+  SmartContract,
+  PrivateKey
 } from 'o1js';
 
 export { ProofOfAge, AdulthoodProof };
@@ -43,59 +40,55 @@ class AdulthoodProof extends Struct({
     ]);
   }
   prove_adult(): Bool {
-    // the logic of proving adulthood is not impelemented here. For discussions, please refer to https://github.com/MinaFoundation/Core-Grants/pull/11
+    // the logic of proving adulthood is not implemented here. For discussions, please refer to https://github.com/MinaFoundation/Core-Grants/pull/11
     return Bool(true);
   }
 }
 
-/**
- * permissions
- * this.deriveTokenId()
- * README
- */
-// https://discord.com/channels/484437221055922177/1222981963283955802
-class ProofOfAge extends TokenContract {
-  
+class ProofOfAge extends SmartContract {
+  @state(PublicKey) owner = State<PublicKey>();
+
   async deploy() {
     await super.deploy();
-    this.account.tokenSymbol.set('ADULT');
     this.account.permissions.set({
-      ...Permissions.default(),
-      access: Permissions.proofOrSignature(),
-      
+      ...Permissions.default(),      
     });
-
   }
-
-  @method async proveAdulthood(adulthood_proof: AdulthoodProof) {
-    adulthood_proof.prove_adult().assertTrue();
-    // assert token balance is zero
-    const sender = this.sender.getAndRequireSignature();
-    const account = AccountUpdate.create(sender, this.deriveTokenId()).account;
-    const balance = account.balance.get();
-    account.balance.requireEquals(balance);
-    balance.assertEquals(UInt64.from(0));
-    // mint soulbound token
-    this.internal.mint({ address: sender, amount: 1 });
-  }
-
-  @method
-  async isAdult(address: PublicKey, token_id: Field) {
-    AccountUpdate.create(address, token_id)
-      .account.balance.getAndRequireEquals()
-      .assertEquals(UInt64.from(1));
   
+  @method async proveAdulthood(private_key: PrivateKey, adulthood_proof: AdulthoodProof) {
+    adulthood_proof.prove_adult().assertTrue();
+    private_key.toPublicKey().assertEquals(this.sender.getAndRequireSignature());
+    this.owner.set(this.sender.getAndRequireSignature());
+  
+    }
+
+  @method async verifyAdulthoodMethod(address: PublicKey) {
+    this.account.isNew.getAndRequireEquals().assertFalse();
+    //Provable.log(this.account.provedState.getAndRequireEquals());
+    this.owner.getAndRequireEquals().assertEquals(address);
+    // assert account is not new
+    // assert provedstate
+    // assert state has public key
+    //update.account.provedState.getAndRequireEquals().assertTrue();
+    //update.update.appState[0].isSome.assertTrue();
+    //update.update.appState[0].value.assertEquals(proof_contract.x);
+   // Provable.log(this.self.body.update.appState[0].isSome);
+// check verification key
+
   }
 
-  static async verifyAdulthood(address: PublicKey, token_id: Field) {
-    const update =  AccountUpdate.create(address, token_id)
-    .account.balance.getAndRequireEquals()
-    .assertEquals(UInt64.from(1));
-    //return update
+  static async verifyAdulthood(user_address: PublicKey,proof_address: PublicKey, vk_hash: Field) {
+    let accountUpdate = AccountUpdate.create(proof_address);
+// use the balance of this account
+// assert that this account is new
+accountUpdate.account.isNew.getAndRequireEquals().assertEquals((Bool(false)));
+//Provable.log(accountUpdate.body.update.appState[0].value);
+accountUpdate.body.preconditions.account.state[0] = { isSome: Bool(true), value: user_address.toFields()[0]};
+accountUpdate.body.preconditions.account.state[1] = { isSome: Bool(true), value: user_address.toFields()[1]};
+
+//Provable.log( accountUpdate.body.authorizationKind.verificationKeyHash);
+accountUpdate.body.authorizationKind.verificationKeyHash.assertEquals(vk_hash);
+
   }
 
-  @method // approveBase is not a method thus not provable. This means wrappers around approveBase (e.g. transfer) are not provable as well.
-  async approveBase(updates: AccountUpdateForest): Promise<void> {
-    this.checkZeroBalanceChange(updates);
-  }
 }
