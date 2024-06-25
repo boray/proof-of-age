@@ -10,7 +10,7 @@ import {
 import { ProofOfAge, AdulthoodProof } from './ProofOfAge';
 
 let proofsEnabled = false;
-/*
+
 describe('ProofOfAge', () => {
   let deployerAccount: Mina.TestPublicKey,
     deployerKey: PrivateKey,
@@ -21,7 +21,9 @@ describe('ProofOfAge', () => {
     zkApp: ProofOfAge;
 
   beforeAll(async () => {
-    if (proofsEnabled) await ProofOfAge.compile();
+    if (proofsEnabled) {
+      await ProofOfAge.compile();
+    }
   });
 
   beforeEach(async () => {
@@ -46,7 +48,7 @@ describe('ProofOfAge', () => {
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
 
-  it('mints a new soulbound proof-of-age token, updates circulating and check adulthood', async () => {
+  it('proves adulthood', async () => {
     await localDeploy();
 
     const adulthood_proof = new AdulthoodProof({
@@ -60,18 +62,9 @@ describe('ProofOfAge', () => {
     });
 
     const txn = await Mina.transaction(senderAccount, async () => {
-      AccountUpdate.fundNewAccount(senderAccount);
-      await zkApp.proveAdulthood(adulthood_proof);
+      await zkApp.proveAdulthood(senderAccount.key, adulthood_proof);
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
-
-    let res;
-    const txny = await Mina.transaction(senderAccount, async () => {
-      res = await zkApp.isAdult(senderAccount,Field(0));
-    });
-    await txny.prove();
-    await txny.sign([senderKey]).send();
   });
 });
-*/
