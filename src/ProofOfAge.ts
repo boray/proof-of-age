@@ -1,48 +1,83 @@
-import { Field, SmartContract, state, State, method, Struct, Bool, Poseidon, Permissions, PublicKey } from 'o1js';
+import {
+  Field,
+  method,
+  Struct,
+  Bool,
+  Poseidon,
+  PublicKey,
+  AccountUpdate,
+  State,
+  Permissions,
+  state,
+  SmartContract,
+  PrivateKey,
+} from 'o1js';
+
+export { ProofOfAge, AdulthoodProof };
 
 /**
  * PROOF-OF-AGE
  * COMPOSABLE PROOFS
  */
 
-
-
-export class AdulthoodProof extends Struct({
+class AdulthoodProof extends Struct({
   first_name: Field,
   last_name: Field,
   nationality: Field,
   date_of_birth: Field,
   gender: Field,
   passport_expiration_date: Field,
-  passport_number: Field
+  passport_number: Field,
 }) {
-
   hash(): Field {
-    return Poseidon.hash([this.first_name,this.last_name,this.nationality,
-      this.date_of_birth,this.gender,this.passport_expiration_date,this.passport_number])
+    return Poseidon.hash([
+      this.first_name,
+      this.last_name,
+      this.nationality,
+      this.date_of_birth,
+      this.gender,
+      this.passport_expiration_date,
+      this.passport_number,
+    ]);
   }
-  verify(): Bool {
+  prove_adult(): Bool {
+    // the logic of proving adulthood is not implemented here. For discussions, please refer to https://github.com/MinaFoundation/Core-Grants/pull/11
     return Bool(true);
   }
-
 }
-export class ProofOfAge extends SmartContract {
-  @state(Field) counter = State<Field>();
 
-  init() {
-    super.init();
-    this.counter.set(Field(0));
+class ProofOfAge extends SmartContract {
+  @state(PublicKey) owner = State<PublicKey>();
+
+  @method async proveAdulthood(
+    private_key: PrivateKey,
+    adulthood_proof: AdulthoodProof
+  ) {
+    adulthood_proof.prove_adult().assertTrue();
+    private_key
+      .toPublicKey()
+      .assertEquals(this.sender.getAndRequireSignature());
+    this.owner.set(this.sender.getAndRequireSignature());
   }
- 
-  @method async prove_adulthood(adulthood_proof: AdulthoodProof) {
-    adulthood_proof.verify().assertTrue();
-    // assert token balance is zero
-    // mint token
-    const currentCount = this.counter.getAndRequireEquals();
-    this.counter.set(currentCount.add(1));
-  }
-  async is_adult(user: PublicKey){
-    // assert balance equals to one
-    return Bool(true);
+
+  static async verifyAdulthood(
+    user_address: PublicKey,
+    proof_address: PublicKey,
+    vk_hash: Field
+  ) {
+    let accountUpdate = AccountUpdate.create(proof_address);
+
+    accountUpdate.body.preconditions.account.provedState.isSome = Bool(true);
+    accountUpdate.body.preconditions.account.state[0] = {
+      isSome: Bool(true),
+      value: user_address.toFields()[0],
+    };
+    accountUpdate.body.preconditions.account.state[1] = {
+      isSome: Bool(true),
+      value: user_address.toFields()[1],
+    };
+    accountUpdate.body.authorizationKind.verificationKeyHash.assertEquals(
+      vk_hash
+    );
   }
 }

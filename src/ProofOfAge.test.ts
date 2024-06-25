@@ -1,6 +1,13 @@
-import { AccountUpdate, Field, Mina, PrivateKey, PublicKey } from 'o1js';
+import {
+  AccountUpdate,
+  Bool,
+  Field,
+  Mina,
+  PrivateKey,
+  PublicKey,
+  UInt64,
+} from 'o1js';
 import { ProofOfAge, AdulthoodProof } from './ProofOfAge';
-
 
 let proofsEnabled = false;
 
@@ -14,7 +21,9 @@ describe('ProofOfAge', () => {
     zkApp: ProofOfAge;
 
   beforeAll(async () => {
-    if (proofsEnabled) await ProofOfAge.compile();
+    if (proofsEnabled) {
+      await ProofOfAge.compile();
+    }
   });
 
   beforeEach(async () => {
@@ -39,13 +48,7 @@ describe('ProofOfAge', () => {
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
 
-  it('generates and deploys the `ProofOfAge` smart contract', async () => {
-    await localDeploy();
-    const counter = zkApp.counter.get();
-    expect(counter).toEqual(Field(0));
-  });
-
-  it('correctly updates the num state on the `ProofOfAge` smart contract', async () => {
+  it('proves adulthood', async () => {
     await localDeploy();
 
     const adulthood_proof = new AdulthoodProof({
@@ -55,16 +58,13 @@ describe('ProofOfAge', () => {
       date_of_birth: Field(1),
       gender: Field(1),
       passport_expiration_date: Field(1),
-      passport_number: Field(1)
+      passport_number: Field(1),
     });
-    // update transaction
+
     const txn = await Mina.transaction(senderAccount, async () => {
-      await zkApp.prove_adulthood(adulthood_proof);
+      await zkApp.proveAdulthood(senderAccount.key, adulthood_proof);
     });
     await txn.prove();
     await txn.sign([senderKey]).send();
-
-    const updatedCounter = zkApp.counter.get();
-    expect(updatedCounter).toEqual(Field(1));
   });
 });

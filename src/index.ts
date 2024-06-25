@@ -1,3 +1,5 @@
 import { ProofOfAge } from './ProofOfAge.js';
+import { DrivingLicenseContract } from './DrivingLicenseContract.js';
 
-export { ProofOfAge };
+
+export { ProofOfAge, DrivingLicenseContract };
