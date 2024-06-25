@@ -1,28 +1,30 @@
-import { Mina, PrivateKey, Field, AccountUpdate, TokenId, UInt64, VerificationKey } from 'o1js';
+import {
+  Mina,
+  PrivateKey,
+  Field,
+  AccountUpdate,
+  TokenId,
+  UInt64,
+  VerificationKey,
+} from 'o1js';
 import { AdulthoodProof, ProofOfAge } from './ProofOfAge.js';
 import { DrivingLicenseContract } from './DrivingLicenseContract.js';
-// import { showTxn, saveTxn, printTxn } from 'mina-transaction-visualizer';
 
 const Local = await Mina.LocalBlockchain({ proofsEnabled: true });
 Mina.setActiveInstance(Local);
 
-let [account_one, account_two] = Local.testAccounts;
+let [sender] = Local.testAccounts;
 
+// setup
 const zkAppPrivateKey = PrivateKey.random();
 const zkAppAddress = zkAppPrivateKey.toPublicKey();
 let contract = new ProofOfAge(zkAppAddress);
-
 
 const licenseZkAppPrivateKey = PrivateKey.random();
 const licenseZkApp = licenseZkAppPrivateKey.toPublicKey();
 let licenceContract = new DrivingLicenseContract(licenseZkApp);
 
-/*
-const legend = {
-  [zkAppAddress.toBase58()]: 'ZkApp',
-  [account_one.toBase58()]: 'deployer',
-};
-*/
+// compile
 if (Local.proofsEnabled) {
   console.time('compile contract');
   await ProofOfAge.compile();
@@ -30,13 +32,9 @@ if (Local.proofsEnabled) {
   console.timeEnd('compile contract');
 }
 
-//console.log(ProofOfAge._verificationKey?.hash.toString())
-console.log(account_one.toFields()[0])
-console.log(account_one.toFields()[1])
-
-
+// dummy proof - in production, this proof would contain credentials that proves adulthood.
 const generic_proof = new AdulthoodProof({
-  first_name: Field.random(),
+  first_name: Field(1),
   last_name: Field(1),
   nationality: Field(1),
   date_of_birth: Field(1),
@@ -45,54 +43,40 @@ const generic_proof = new AdulthoodProof({
   passport_number: Field(1),
 });
 
-
-
-console.time('deploy');
-const deploy_tx = await Mina.transaction(account_one, async () => {
-  AccountUpdate.fundNewAccount(account_one);
+console.time('deploy proof-of-age contract');
+const deploy_tx = await Mina.transaction(sender, async () => {
+  AccountUpdate.fundNewAccount(sender);
   await contract.deploy();
 });
 await deploy_tx.prove();
-await deploy_tx.sign([zkAppPrivateKey, account_one.key]).send();
-//printTxn(deploy_tx, 'deploy_txn', legend);
+await deploy_tx.sign([zkAppPrivateKey, sender.key]).send();
 console.log(deploy_tx.toPretty());
-console.timeEnd('deploy');
+console.timeEnd('deploy proof-of-age contract');
 
 console.time('deploy licence contract');
-const deploy_license_tx = await Mina.transaction(account_one, async () => {
-  AccountUpdate.fundNewAccount(account_one);
+const deploy_license_tx = await Mina.transaction(sender, async () => {
+  AccountUpdate.fundNewAccount(sender);
   await licenceContract.deploy();
 });
 await deploy_license_tx.prove();
-await deploy_license_tx.sign([licenseZkAppPrivateKey, account_one.key]).send();
+await deploy_license_tx.sign([licenseZkAppPrivateKey, sender.key]).send();
 console.log(deploy_license_tx.toPretty());
-
-//printTxn(deploy_tx, 'deploy_txn', legend);
 console.timeEnd('deploy licence contract');
 
-console.time('register proof-of-age');
-try {
-  const register_tx = await Mina.transaction(account_one, async () => {
-    //AccountUpdate.fundNewAccount(account_one);
-    await contract.proveAdulthood(account_one.key, generic_proof);
-  });
-  await register_tx.prove();
-  await register_tx.sign([account_one.key]).send();
-  console.log(register_tx.toPretty());
-
-  //printTxn(register_tx, 'register_txn', legend);
-} catch (err) {
-  console.log(err);
-}
-console.timeEnd('register proof-of-age');
-
+console.time('prove adulthood');
+const register_tx = await Mina.transaction(sender, async () => {
+  await contract.proveAdulthood(sender.key, generic_proof);
+});
+await register_tx.prove();
+await register_tx.sign([sender.key]).send();
+console.log(register_tx.toPretty());
+console.timeEnd('prove adulthood');
 
 console.time('apply for license');
-const license_tx = await Mina.transaction(account_one, async () => {
+const license_tx = await Mina.transaction(sender, async () => {
   await licenceContract.apply_for_driving_license(zkAppAddress);
-  
 });
 await license_tx.prove();
-await license_tx.sign([account_one.key]).send();
+await license_tx.sign([sender.key]).send();
 console.log(license_tx.toPretty());
 console.timeEnd('apply for license');

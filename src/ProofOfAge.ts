@@ -10,10 +10,11 @@ import {
   Permissions,
   state,
   SmartContract,
-  PrivateKey
+  PrivateKey,
 } from 'o1js';
 
 export { ProofOfAge, AdulthoodProof };
+
 /**
  * PROOF-OF-AGE
  * COMPOSABLE PROOFS
@@ -48,47 +49,35 @@ class AdulthoodProof extends Struct({
 class ProofOfAge extends SmartContract {
   @state(PublicKey) owner = State<PublicKey>();
 
-  async deploy() {
-    await super.deploy();
-    this.account.permissions.set({
-      ...Permissions.default(),      
-    });
-  }
-  
-  @method async proveAdulthood(private_key: PrivateKey, adulthood_proof: AdulthoodProof) {
+  @method async proveAdulthood(
+    private_key: PrivateKey,
+    adulthood_proof: AdulthoodProof
+  ) {
     adulthood_proof.prove_adult().assertTrue();
-    private_key.toPublicKey().assertEquals(this.sender.getAndRequireSignature());
+    private_key
+      .toPublicKey()
+      .assertEquals(this.sender.getAndRequireSignature());
     this.owner.set(this.sender.getAndRequireSignature());
-  
-    }
-
-  @method async verifyAdulthoodMethod(address: PublicKey) {
-    this.account.isNew.getAndRequireEquals().assertFalse();
-    //Provable.log(this.account.provedState.getAndRequireEquals());
-    this.owner.getAndRequireEquals().assertEquals(address);
-    // assert account is not new
-    // assert provedstate
-    // assert state has public key
-    //update.account.provedState.getAndRequireEquals().assertTrue();
-    //update.update.appState[0].isSome.assertTrue();
-    //update.update.appState[0].value.assertEquals(proof_contract.x);
-   // Provable.log(this.self.body.update.appState[0].isSome);
-// check verification key
-
   }
 
-  static async verifyAdulthood(user_address: PublicKey,proof_address: PublicKey, vk_hash: Field) {
+  static async verifyAdulthood(
+    user_address: PublicKey,
+    proof_address: PublicKey,
+    vk_hash: Field
+  ) {
     let accountUpdate = AccountUpdate.create(proof_address);
-// use the balance of this account
-// assert that this account is new
-accountUpdate.account.isNew.getAndRequireEquals().assertEquals((Bool(false)));
-//Provable.log(accountUpdate.body.update.appState[0].value);
-accountUpdate.body.preconditions.account.state[0] = { isSome: Bool(true), value: user_address.toFields()[0]};
-accountUpdate.body.preconditions.account.state[1] = { isSome: Bool(true), value: user_address.toFields()[1]};
 
-//Provable.log( accountUpdate.body.authorizationKind.verificationKeyHash);
-accountUpdate.body.authorizationKind.verificationKeyHash.assertEquals(vk_hash);
-
+    accountUpdate.body.preconditions.account.provedState.isSome = Bool(true);
+    accountUpdate.body.preconditions.account.state[0] = {
+      isSome: Bool(true),
+      value: user_address.toFields()[0],
+    };
+    accountUpdate.body.preconditions.account.state[1] = {
+      isSome: Bool(true),
+      value: user_address.toFields()[1],
+    };
+    accountUpdate.body.authorizationKind.verificationKeyHash.assertEquals(
+      vk_hash
+    );
   }
-
 }
